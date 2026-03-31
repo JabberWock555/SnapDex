@@ -1,0 +1,5 @@
+{
+  "name": "SnapDex",
+  "description": "Scan business cards and extract contact information to save directly to your phone.",
+  "requestFramePermissions": ["camera"]
+}
