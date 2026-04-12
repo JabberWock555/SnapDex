@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import { Contact } from './types';
 import { extractContactFromImage } from './lib/gemini';
 import { downloadVCard } from './lib/vcard';
+import { logEvent, setScreenName } from './lib/analytics';
 
 export default function App() {
   const [history, setHistory] = useState<Contact[]>([]);
@@ -32,19 +33,35 @@ export default function App() {
     localStorage.setItem('bizcard_history', JSON.stringify(history));
   }, [history]);
 
+  // Track screen views
+  useEffect(() => {
+    if (currentScan) {
+      setScreenName('ContactDetail');
+    } else {
+      setScreenName('Home');
+    }
+  }, [currentScan]);
+
   const existingTags = Array.from(new Set(history.map(c => c.tag).filter(Boolean))) as string[];
 
   const handleCapture = async (base64Image: string) => {
     setIsProcessing(true);
     setError(null);
     setCurrentImage(base64Image);
-    
+    logEvent('scan_started');
+
     try {
       const extractedData = await extractContactFromImage(base64Image, existingTags);
       setCurrentScan(extractedData);
+      logEvent('scan_success', {
+        fields_found: Object.keys(extractedData).length
+      });
     } catch (err) {
       console.error(err);
       setError("Failed to extract information. Please try again or enter manually.");
+      logEvent('scan_failed', {
+        error: err instanceof Error ? err.message : 'Unknown error'
+      });
       // Still open the form so they can enter manually if they want
       setCurrentScan({});
     } finally {
@@ -53,6 +70,10 @@ export default function App() {
   };
 
   const handleSaveContact = (contact: Contact) => {
+    logEvent('contact_saved', {
+      has_tag: !!contact.tag,
+      tag: contact.tag
+    });
     // Add to history (prepend)
     setHistory(prev => {
       // If editing an existing one, replace it
@@ -72,12 +93,14 @@ export default function App() {
   };
 
   const handleCancel = () => {
+    logEvent('scan_cancelled');
     setCurrentScan(null);
     setCurrentImage(undefined);
     setError(null);
   };
 
   const handleSelectHistory = (contact: Contact) => {
+    logEvent('history_item_selected');
     setCurrentScan(contact);
     setCurrentImage(contact.imageUrl);
   };
@@ -88,7 +111,10 @@ export default function App() {
         history={history} 
         onSelectContact={handleSelectHistory} 
         isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
+        setIsOpen={(open) => {
+          setIsSidebarOpen(open);
+          if (open) logEvent('sidebar_opened');
+        }}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
