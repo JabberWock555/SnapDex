@@ -69,7 +69,7 @@ export default function App() {
     }
   };
 
-  const handleSaveContact = (contact: Contact) => {
+  const handleSaveContact = async (contact: Contact) => {
     logEvent('contact_saved', {
       has_tag: !!contact.tag,
       tag: contact.tag
@@ -84,8 +84,8 @@ export default function App() {
       return [contact, ...prev];
     });
     
-    // Trigger vCard download
-    downloadVCard(contact);
+    // Trigger vCard share/download
+    await downloadVCard(contact);
     
     // Reset view
     setCurrentScan(null);

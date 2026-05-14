@@ -1,14 +1,17 @@
 {
-  "name": "react-example",
+  "name": "snapdex",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "server": "tsx watch server/index.ts",
+    "dev:all": "npx -y concurrently -n vite,server -c blue,green \"npm run dev\" \"npm run server\"",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "start": "node dist-server/index.js"
   },
   "dependencies": {
     "@capacitor-community/firebase-analytics": "^8.0.0",

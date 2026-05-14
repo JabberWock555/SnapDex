@@ -1,54 +1,45 @@
-import { FirebaseAnalytics } from '@capacitor-community/firebase-analytics';
 import { Capacitor } from '@capacitor/core';
 
 export const initAnalytics = async () => {
-  if (Capacitor.isNativePlatform()) {
-    // On native platforms, the configuration is typically picked up from google-services.json / GoogleService-Info.plist
-    // But we can still initialize it if needed.
-    return;
-  }
-
-  // For web, you might need to provide the configuration
-  // FirebaseAnalytics.initializeFirebase(firebaseConfig);
+  // Analytics only works on native (Android/iOS) via google-services.json
+  // Nothing to initialize on web
 };
 
 export const logEvent = async (name: string, params: any = {}) => {
+  if (!Capacitor.isNativePlatform()) return;
   try {
-    await FirebaseAnalytics.logEvent({
-      name,
-      params,
-    });
+    const { FirebaseAnalytics } = await import('@capacitor-community/firebase-analytics');
+    await FirebaseAnalytics.logEvent({ name, params });
   } catch (e) {
     console.error('Failed to log analytics event', e);
   }
 };
 
 export const setUserId = async (userId: string) => {
+  if (!Capacitor.isNativePlatform()) return;
   try {
-    await FirebaseAnalytics.setUserId({
-      userId,
-    });
+    const { FirebaseAnalytics } = await import('@capacitor-community/firebase-analytics');
+    await FirebaseAnalytics.setUserId({ userId });
   } catch (e) {
     console.error('Failed to set user id', e);
   }
 };
 
 export const setUserProperty = async (name: string, value: string) => {
+  if (!Capacitor.isNativePlatform()) return;
   try {
-    await FirebaseAnalytics.setUserProperty({
-      name,
-      value,
-    });
+    const { FirebaseAnalytics } = await import('@capacitor-community/firebase-analytics');
+    await FirebaseAnalytics.setUserProperty({ name, value });
   } catch (e) {
     console.error('Failed to set user property', e);
   }
 };
 
 export const setScreenName = async (screenName: string) => {
+  if (!Capacitor.isNativePlatform()) return;
   try {
-    await FirebaseAnalytics.setScreenName({
-      screenName,
-    });
+    const { FirebaseAnalytics } = await import('@capacitor-community/firebase-analytics');
+    await FirebaseAnalytics.setScreenName({ screenName });
   } catch (e) {
     console.error('Failed to set screen name', e);
   }
