@@ -1,7 +1,24 @@
 import React, { useState } from 'react';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithCredential } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Aperture, LogIn } from 'lucide-react';
 import { auth } from '../lib/firebase';
+
+async function googleSignIn() {
+  if (Capacitor.isNativePlatform()) {
+    // Native Android/iOS — use the Capacitor plugin for proper OAuth flow
+    const result = await FirebaseAuthentication.signInWithGoogle();
+    const idToken = result.credential?.idToken;
+    if (!idToken) throw new Error('No ID token returned from Google Sign-In');
+    // Link the native result with the Firebase Web SDK so onAuthStateChanged fires
+    const credential = GoogleAuthProvider.credential(idToken);
+    await signInWithCredential(auth, credential);
+  } else {
+    // Web browser — popup works fine
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  }
+}
 
 export default function AuthGate() {
   const [loading, setLoading] = useState(false);
@@ -11,7 +28,7 @@ export default function AuthGate() {
     setLoading(true);
     setError(null);
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      await googleSignIn();
     } catch (err) {
       console.error('Sign-in failed:', err);
       setError('Sign-in failed. Please try again.');
