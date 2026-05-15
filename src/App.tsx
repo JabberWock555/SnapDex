@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, Aperture, LogOut } from 'lucide-react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
 import Scanner from './components/Scanner';
 import ContactForm from './components/ContactForm';
 import Sidebar from './components/Sidebar';
 import AuthGate from './components/AuthGate';
 import { Contact } from './types';
 import { extractContactFromImage } from './lib/gemini';
-import { downloadVCard } from './lib/vcard';
+import { downloadVCard, saveToDeviceContacts } from './lib/vcard';
 import { logEvent, setScreenName, setUserId } from './lib/analytics';
 import { auth } from './lib/firebase';
 import { loadContacts, saveContact } from './lib/db';
@@ -92,8 +93,19 @@ export default function App() {
       return [contact, ...prev];
     });
 
-    await downloadVCard(contact);
+    // Save to device contacts (native) or download VCF (web)
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await saveToDeviceContacts(contact);
+      } else {
+        await downloadVCard(contact);
+      }
+    } catch (e) {
+      console.error('Failed to save to device contacts:', e);
+    }
+
     setCurrentScan(null);
+    setCurrentImage(undefined);
     setCurrentImage(undefined);
   };
 
