@@ -3,8 +3,9 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env from project root
+// Load .env / .env.local from project root (.env.local takes precedence)
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,7 +14,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // CORS — allow the Vite dev server and the Capacitor WebView
 app.use((req, res, next) => {
-  const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000', 'capacitor://localhost', 'http://localhost'];
+  const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000', 'capacitor://localhost', 'http://localhost', 'https://localhost'];
   const origin = req.headers.origin || '';
   if (allowedOrigins.includes(origin) || !origin) {
     res.header('Access-Control-Allow-Origin', origin || '*');
