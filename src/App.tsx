@@ -92,7 +92,7 @@ export default function App() {
       return [contact, ...prev];
     });
 
-    downloadVCard(contact);
+    await downloadVCard(contact);
     setCurrentScan(null);
     setCurrentImage(undefined);
   };
