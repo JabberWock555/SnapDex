@@ -1,6 +1,6 @@
 import { Contact } from "../types";
 import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 
 function buildVCardString(contact: Contact): string {
@@ -29,7 +29,7 @@ export async function downloadVCard(contact: Contact): Promise<void> {
         path: fileName,
         data: vcard,
         directory: Directory.Cache,
-        encoding: "utf8" as any,
+        encoding: Encoding.UTF8,
       });
 
       await Share.share({
