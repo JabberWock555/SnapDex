@@ -29,9 +29,10 @@ export default function AuthGate() {
     setError(null);
     try {
       await googleSignIn();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Sign-in failed:', err);
-      setError('Sign-in failed. Please try again.');
+      const msg = err?.message || err?.code || JSON.stringify(err) || 'Unknown error';
+      setError(`Sign-in failed: ${msg}`);
       setLoading(false);
     }
   };
