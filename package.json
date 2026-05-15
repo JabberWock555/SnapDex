@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "start": "node dist-server/index.js"
+    "start": "tsx server/index.ts"
   },
   "dependencies": {
     "@capacitor-community/firebase-analytics": "^8.0.0",
