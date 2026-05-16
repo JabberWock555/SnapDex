@@ -1,44 +1,76 @@
 # SnapDex
 
-Business card scanner that converts cards to phone contacts. User photographs a card → Gemini AI extracts contact fields → user reviews/edits → `.vcf` file is downloaded (importable by Android/iOS as a contact).
+Business card scanner → Gemini AI extracts contact fields → saved to Firestore + written directly to phone's Contacts app.
 
 **Current goal:** Publish to Google Play Store.
 
 ## Stack
 
 - React 19 + TypeScript + Vite + Tailwind CSS v4
-- Capacitor v8 for Android packaging (`@capacitor/android`)
-- Gemini AI (`@google/genai`) — model `gemini-3.1-flash-lite-preview` for card OCR
-- Firebase Analytics (`@capacitor-community/firebase-analytics`, `firebase`)
-- Contact storage: `localStorage` (key `bizcard_history`)
-- Contact export: vCard 3.0 `.vcf` download via `src/lib/vcard.ts`
+- Capacitor v8 (`@capacitor/android`) — app ID: `com.jabberwockstudio.snapdex`
+- Gemini AI (`@google/genai`) — model `gemini-2.5-flash-lite-preview-06-17`, called directly from client using `VITE_GEMINI_API_KEY`
+- Firebase Auth (`firebase`) — Google Sign-In via `@capacitor-firebase/authentication` (native on Android, popup on web)
+- Firestore (`firebase/firestore`) — contact storage at `users/{uid}/contacts/{contactId}`
+- Firebase Analytics (`@capacitor-community/firebase-analytics`)
+- Contact saving: `@capacitor-community/contacts` writes directly to phone address book on native
+- Contact export: vCard 3.0 `.vcf` download on web fallback via `src/lib/vcard.ts`
 
 ## Key files
 
 | File | Purpose |
 |---|---|
-| `src/App.tsx` | Root state: scan flow, history, error handling |
+| `src/App.tsx` | Root state: auth, scan flow, Firestore load/save, error handling |
+| `src/components/AuthGate.tsx` | Google Sign-In screen (shown when unauthenticated) |
 | `src/components/Scanner.tsx` | Camera capture UI |
-| `src/components/ContactForm.tsx` | Review/edit extracted fields before saving |
-| `src/components/Sidebar.tsx` | Scan history list |
-| `src/lib/gemini.ts` | Calls Gemini API, returns structured `Contact` |
-| `src/lib/vcard.ts` | Generates and triggers `.vcf` download |
-| `src/lib/analytics.ts` | Firebase Analytics wrapper (`logEvent`, `setScreenName`) |
+| `src/components/ContactForm.tsx` | Review/edit extracted fields; async onSave with isSubmitting guard |
+| `src/components/Sidebar.tsx` | Scan history grouped by tag |
+| `src/lib/firebase.ts` | Firebase app init — exports `auth` and `db` |
+| `src/lib/db.ts` | Firestore helpers: `loadContacts`, `saveContact`, `deleteContact` |
+| `src/lib/gemini.ts` | Direct Gemini API call, returns structured `Contact` |
+| `src/lib/vcard.ts` | `saveToDeviceContacts` (native) + `downloadVCard` (web fallback) |
+| `src/lib/analytics.ts` | Firebase Analytics wrapper |
 | `src/types.ts` | `Contact` interface |
+| `capacitor.config.ts` | Capacitor config — includes FirebaseAuthentication plugin with `providers: ['google.com']` |
+| `server/index.ts` | Express backend (unused for Gemini now; kept for future proxy use) |
 
 ## Contact fields
 
 `id`, `firstName`, `lastName`, `company`, `jobTitle`, `phone`, `email`, `website`, `address`, `scanDate`, `imageUrl?`, `tag?`
 
-## Environment
+## Environment (`.env.local` — never commit)
 
-- `GEMINI_API_KEY` — required, injected at build time via `vite.config.ts`
-- Dev server: `npm run dev` (port 3000)
-- Build: `npm run build`
+```
+VITE_GEMINI_API_KEY=...   # get from aistudio.google.com/apikey
+```
 
-## Play Store checklist (in progress)
+Firebase config is hardcoded in `src/lib/firebase.ts` (safe — public identifiers).
 
-- Capacitor Android project must be synced: `npx cap sync android`
-- App ID, version, signing config live in `android/app/build.gradle`
-- Firebase config (`google-services.json`) must be placed in `android/app/`
-- `GEMINI_API_KEY` must not be hard-coded in the APK — use a backend proxy or Android-specific secret handling before release
+## Build & run
+
+```bash
+npm run dev          # web dev server (port 3000)
+npm run build        # production build → dist/
+npx cap sync android # copy dist/ to Android project
+# Then build APK in Android Studio or:
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+cd android && ./gradlew assembleDebug
+```
+
+## Android notes
+
+- `google-services.json` must be in `android/app/` (download from Firebase Console)
+- SHA-1 debug fingerprint must be registered in Firebase Console for Google Sign-In
+- `READ_CONTACTS` + `WRITE_CONTACTS` permissions declared in `AndroidManifest.xml`
+- Two node_modules patches applied via `patches/` folder (proguard fix for `@capacitor-community/contacts` and `@capacitor-community/firebase-analytics`)
+- `postinstall: patch-package` in `package.json` auto-applies patches after `npm install`
+
+## Play Store checklist
+
+- [x] Capacitor Android project synced
+- [x] Firebase Auth (Google Sign-In) working on Android
+- [x] Firestore contact storage with security rules
+- [x] Contacts permission + direct save to phone address book
+- [ ] Signing keystore for release build
+- [ ] `VITE_GEMINI_API_KEY` — move to backend proxy before Play Store release (key is currently in APK)
+- [ ] App icon, splash screen
+- [ ] Play Console listing (screenshots, description, privacy policy)
