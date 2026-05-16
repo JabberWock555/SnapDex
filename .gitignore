@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Device testing workflow
+scripts/credentials.json
+scripts/service_account.json
+scripts/.gdrive_token.json
+logs/
