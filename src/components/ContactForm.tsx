@@ -6,15 +6,20 @@ interface ContactFormProps {
   initialData: Partial<Contact>;
   imageUrl?: string;
   existingTags: string[];
-  onSave: (contact: Contact) => void;
+  onSave: (contact: Contact) => Promise<void>;
   onCancel: () => void;
 }
 
 export default function ContactForm({ initialData, imageUrl, existingTags, onSave, onCancel }: ContactFormProps) {
   const [formData, setFormData] = useState<Partial<Contact>>(initialData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Stable ID for this contact — generated once so re-submits don't create duplicates
+  const contactId = React.useRef(initialData.id || crypto.randomUUID());
 
   useEffect(() => {
     setFormData(initialData);
+    setIsSubmitting(false);
+    contactId.current = initialData.id || crypto.randomUUID();
   }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,12 +27,13 @@ export default function ContactForm({ initialData, imageUrl, existingTags, onSav
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Generate an ID and timestamp if this is a new contact
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     const finalContact: Contact = {
-      id: formData.id || crypto.randomUUID(),
+      id: contactId.current,
       scanDate: formData.scanDate || Date.now(),
       firstName: formData.firstName || '',
       lastName: formData.lastName || '',
@@ -40,8 +46,12 @@ export default function ContactForm({ initialData, imageUrl, existingTags, onSav
       tag: formData.tag || '',
       imageUrl: imageUrl || formData.imageUrl,
     };
-    
-    onSave(finalContact);
+
+    try {
+      await onSave(finalContact);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -223,10 +233,11 @@ export default function ContactForm({ initialData, imageUrl, existingTags, onSav
         <button
           type="submit"
           form="contact-form"
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00254c] text-white rounded-xl font-medium hover:bg-[#001a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00254c] transition-all shadow-sm"
+          disabled={isSubmitting}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00254c] text-white rounded-xl font-medium hover:bg-[#001a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00254c] transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Save className="w-5 h-5" />
-          Save to Contacts
+          {isSubmitting ? 'Saving...' : 'Save to Contacts'}
         </button>
       </div>
     </div>
