@@ -21,7 +21,7 @@ export async function extractContactFromImage(
       : ` Also suggest a single relevant tag (e.g. Client, Vendor, Tech, Healthcare).`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite-preview-06-17",
+    model: "gemini-3.1-flash-lite",
     contents: [
       {
         inlineData: { data: base64Data, mimeType: "image/jpeg" },
