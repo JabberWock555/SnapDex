@@ -49,5 +49,22 @@ export async function extractContactFromImage(
   });
 
   if (!response.text) throw new Error("No response from Gemini.");
-  return JSON.parse(response.text);
+  const parsed = JSON.parse(response.text);
+
+  // Sanitize string fields — reject values that look like model reasoning
+  // (excessively long or not a plausible value for the field)
+  const clean = (v: unknown) => (typeof v === 'string' && v.length <= 300 ? v : '');
+  const isUrl = (v: string) => v === '' || /^https?:\/\//i.test(v);
+
+  return {
+    firstName: clean(parsed.firstName),
+    lastName:  clean(parsed.lastName),
+    company:   clean(parsed.company),
+    jobTitle:  clean(parsed.jobTitle),
+    phone:     clean(parsed.phone),
+    email:     clean(parsed.email),
+    website:   isUrl(clean(parsed.website)) ? clean(parsed.website) : '',
+    address:   clean(parsed.address),
+    tag:       clean(parsed.tag),
+  };
 }
