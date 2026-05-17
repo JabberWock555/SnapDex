@@ -1,6 +1,6 @@
 import { Contact } from "../types";
 import { Capacitor } from "@capacitor/core";
-import { Contacts, PhoneType, EmailType } from "@capacitor-community/contacts";
+import { Contacts, PhoneType, EmailType, PostalAddressType } from "@capacitor-community/contacts";
 
 export async function saveToDeviceContacts(contact: Contact): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
@@ -8,27 +8,31 @@ export async function saveToDeviceContacts(contact: Contact): Promise<void> {
   // Check existing grant before triggering a dialog (avoids hung permission prompts)
   const permStatus = await Contacts.checkPermissions();
   if (permStatus.contacts !== 'granted') {
-    const { granted } = await Contacts.requestPermissions();
-    if (!granted) {
+    const result = await Contacts.requestPermissions();
+    if (result.contacts !== 'granted') {
       throw new Error("Contacts permission denied. Please enable it in Settings > Apps > SnapDex > Permissions.");
     }
   }
 
   await Contacts.createContact({
     contact: {
-      givenName: contact.firstName || undefined,
-      familyName: contact.lastName || undefined,
-      organizationName: contact.company || undefined,
-      jobTitle: contact.jobTitle || undefined,
+      name: {
+        given: contact.firstName || null,
+        family: contact.lastName || null,
+      },
+      organization: {
+        company: contact.company || null,
+        jobTitle: contact.jobTitle || null,
+      },
       phones: contact.phone
         ? [{ type: PhoneType.Work, label: 'Work', number: contact.phone }]
         : [],
       emails: contact.email
         ? [{ type: EmailType.Work, label: 'Work', address: contact.email }]
         : [],
-      urls: contact.website ? [{ url: contact.website }] : [],
+      urls: contact.website ? [contact.website] : [],
       postalAddresses: contact.address
-        ? [{ label: 'Work', fullAddress: contact.address }]
+        ? [{ type: PostalAddressType.Work, label: 'Work', street: contact.address }]
         : [],
     },
   });
