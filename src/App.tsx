@@ -79,34 +79,27 @@ export default function App() {
 
     logEvent('contact_saved', { has_tag: !!contact.tag, tag: contact.tag });
 
-    // Persist to Firestore
-    try {
-      await saveContact(user.uid, contact);
-    } catch (e) {
-      console.error('Failed to save contact to Firestore', e);
-    }
+    // Persist to Firestore — propagate failure so button doesn't show "Saved"
+    await saveContact(user.uid, contact);
 
-    // Update local state
+    // Update local history
     setHistory(prev => {
       const exists = prev.some(c => c.id === contact.id);
       if (exists) return prev.map(c => c.id === contact.id ? contact : c);
       return [contact, ...prev];
     });
 
-    // Save to device contacts (native) or download VCF (web)
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await saveToDeviceContacts(contact);
-      } else {
-        await downloadVCard(contact);
-      }
-    } catch (e) {
-      console.error('Failed to save to device contacts:', e);
+    // Save to device contacts (native) or download VCF (web) — fire without blocking the button
+    if (Capacitor.isNativePlatform()) {
+      saveToDeviceContacts(contact).catch(e => {
+        console.error('Failed to save to device contacts:', e);
+        setError(e instanceof Error ? e.message : 'Failed to save to device contacts.');
+      });
+    } else {
+      downloadVCard(contact).catch(e => {
+        console.error('Failed to download VCF:', e);
+      });
     }
-
-    setCurrentScan(null);
-    setCurrentImage(undefined);
-    setCurrentImage(undefined);
   };
 
   const handleCancel = () => {

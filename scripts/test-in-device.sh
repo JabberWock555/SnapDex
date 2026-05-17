@@ -9,6 +9,27 @@ LOG_DIR="$PROJECT_ROOT/logs"
 BUGS_FILE="$PROJECT_ROOT/BUGS.md"
 PACKAGE="com.jabberwockstudio.snapdex"
 
+# Use Android Studio's bundled JDK 21 if available (required by capacitor-filesystem);
+# fall back to JAVA_HOME if already set to a suitable version.
+AS_JBR="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+if [ -x "$AS_JBR/bin/java" ]; then
+  export JAVA_HOME="$AS_JBR"
+fi
+
+# Locate main project root (works for both worktrees and normal checkouts)
+MAIN_ROOT="$(git -C "$PROJECT_ROOT" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+if [ -z "$MAIN_ROOT" ]; then MAIN_ROOT="$PROJECT_ROOT"; fi
+
+# Copy local.properties if missing (gitignored, lives only in main project)
+if [ ! -f "$PROJECT_ROOT/android/local.properties" ] && [ -f "$MAIN_ROOT/android/local.properties" ]; then
+  cp "$MAIN_ROOT/android/local.properties" "$PROJECT_ROOT/android/local.properties"
+fi
+
+# Copy .env.local if missing (gitignored, contains VITE_GEMINI_API_KEY baked at build time)
+if [ ! -f "$PROJECT_ROOT/.env.local" ] && [ -f "$MAIN_ROOT/.env.local" ]; then
+  cp "$MAIN_ROOT/.env.local" "$PROJECT_ROOT/.env.local"
+fi
+
 SKIP_PUSH=false
 SKIP_UPLOAD=false
 
