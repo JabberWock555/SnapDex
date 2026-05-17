@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Contact } from '../types';
-import { User, Building, Briefcase, Phone, Mail, Globe, MapPin, Save, X, Tag } from 'lucide-react';
+import { User, Building, Briefcase, Phone, Mail, Globe, MapPin, Save, X, Tag, Check } from 'lucide-react';
 
 interface ContactFormProps {
   initialData: Partial<Contact>;
@@ -13,24 +13,28 @@ interface ContactFormProps {
 export default function ContactForm({ initialData, imageUrl, existingTags, onSave, onCancel }: ContactFormProps) {
   const [formData, setFormData] = useState<Partial<Contact>>(initialData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   // Stable ID for this contact — generated once so re-submits don't create duplicates
   const contactId = React.useRef(initialData.id || crypto.randomUUID());
 
   useEffect(() => {
     setFormData(initialData);
     setIsSubmitting(false);
+    setIsSaved(false);
     contactId.current = initialData.id || crypto.randomUUID();
   }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setIsSaved(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setIsSaved(false);
 
     const finalContact: Contact = {
       id: contactId.current,
@@ -49,6 +53,9 @@ export default function ContactForm({ initialData, imageUrl, existingTags, onSav
 
     try {
       await onSave(finalContact);
+      setIsSaved(true);
+    } catch {
+      // error displayed by parent via setError
     } finally {
       setIsSubmitting(false);
     }
@@ -233,11 +240,29 @@ export default function ContactForm({ initialData, imageUrl, existingTags, onSav
         <button
           type="submit"
           form="contact-form"
-          disabled={isSubmitting}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00254c] text-white rounded-xl font-medium hover:bg-[#001a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00254c] transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={isSubmitting || isSaved}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all shadow-sm disabled:cursor-not-allowed ${
+            isSaved
+              ? 'bg-green-700 text-white focus:ring-green-600 opacity-90'
+              : 'bg-[#00254c] text-white hover:bg-[#001a35] focus:ring-[#00254c] disabled:opacity-60'
+          }`}
         >
-          <Save className="w-5 h-5" />
-          {isSubmitting ? 'Saving...' : 'Save to Contacts'}
+          {isSaved ? (
+            <>
+              <Check className="w-5 h-5" />
+              Saved
+            </>
+          ) : isSubmitting ? (
+            <>
+              <Save className="w-5 h-5 animate-pulse" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-5 h-5" />
+              Save to Contacts
+            </>
+          )}
         </button>
       </div>
     </div>

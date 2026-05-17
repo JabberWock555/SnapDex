@@ -5,10 +5,13 @@ import { Contacts, PhoneType, EmailType } from "@capacitor-community/contacts";
 export async function saveToDeviceContacts(contact: Contact): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
 
-  // Request permission first
-  const { granted } = await Contacts.requestPermissions();
-  if (!granted) {
-    throw new Error("Contacts permission denied.");
+  // Check existing grant before triggering a dialog (avoids hung permission prompts)
+  const permStatus = await Contacts.checkPermissions();
+  if (permStatus.contacts !== 'granted') {
+    const { granted } = await Contacts.requestPermissions();
+    if (!granted) {
+      throw new Error("Contacts permission denied. Please enable it in Settings > Apps > SnapDex > Permissions.");
+    }
   }
 
   await Contacts.createContact({

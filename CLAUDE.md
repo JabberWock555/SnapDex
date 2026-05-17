@@ -8,7 +8,7 @@ Business card scanner → Gemini AI extracts contact fields → saved to Firesto
 
 - React 19 + TypeScript + Vite + Tailwind CSS v4
 - Capacitor v8 (`@capacitor/android`) — app ID: `com.jabberwockstudio.snapdex`
-- Gemini AI (`@google/genai`) — model `gemini-2.5-flash-lite-preview-06-17`, called directly from client using `VITE_GEMINI_API_KEY`
+- Gemini AI (`@google/genai`) — model `gemini-3.1-flash-lite`, called directly from client using `VITE_GEMINI_API_KEY`
 - Firebase Auth (`firebase`) — Google Sign-In via `@capacitor-firebase/authentication` (native on Android, popup on web)
 - Firestore (`firebase/firestore`) — contact storage at `users/{uid}/contacts/{contactId}`
 - Firebase Analytics (`@capacitor-community/firebase-analytics`)
