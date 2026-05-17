@@ -4,31 +4,23 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APK_OUTPUT="$PROJECT_ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
-LOG_DIR="$PROJECT_ROOT/logs"
-BUGS_FILE="$PROJECT_ROOT/BUGS.md"
 PACKAGE="com.jabberwockstudio.snapdex"
 
-# Use Android Studio's bundled JDK 21 if available (required by capacitor-filesystem);
-# fall back to JAVA_HOME if already set to a suitable version.
+# Use Android Studio's bundled JDK 21 if available (required by capacitor-filesystem)
 AS_JBR="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 if [ -x "$AS_JBR/bin/java" ]; then
   export JAVA_HOME="$AS_JBR"
 fi
 
-# Locate main project root (works for both worktrees and normal checkouts)
-MAIN_ROOT="$(git -C "$PROJECT_ROOT" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
-if [ -z "$MAIN_ROOT" ]; then MAIN_ROOT="$PROJECT_ROOT"; fi
+# Always build from the main worktree root — it has .env.local, android/local.properties,
+# google-services.json, and all other gitignored files that linked worktrees lack.
+# git worktree list prints the main worktree first, so we grab its path.
+BUILD_ROOT="$(git -C "$PROJECT_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')"
+if [ -z "$BUILD_ROOT" ]; then BUILD_ROOT="$PROJECT_ROOT"; fi
 
-# Copy local.properties if missing (gitignored, lives only in main project)
-if [ ! -f "$PROJECT_ROOT/android/local.properties" ] && [ -f "$MAIN_ROOT/android/local.properties" ]; then
-  cp "$MAIN_ROOT/android/local.properties" "$PROJECT_ROOT/android/local.properties"
-fi
-
-# Copy .env.local if missing (gitignored, contains VITE_GEMINI_API_KEY baked at build time)
-if [ ! -f "$PROJECT_ROOT/.env.local" ] && [ -f "$MAIN_ROOT/.env.local" ]; then
-  cp "$MAIN_ROOT/.env.local" "$PROJECT_ROOT/.env.local"
-fi
+APK_OUTPUT="$BUILD_ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
+LOG_DIR="$PROJECT_ROOT/logs"   # logs stay in the worktree/project that ran the script
+BUGS_FILE="$PROJECT_ROOT/BUGS.md"
 
 SKIP_PUSH=false
 SKIP_UPLOAD=false
@@ -51,8 +43,8 @@ mkdir -p "$LOG_DIR"
 
 # ── 1. Git push ───────────────────────────────────────────────────────────────
 if [ "$SKIP_PUSH" = false ]; then
-  step "Checking git status"
-  cd "$PROJECT_ROOT"
+  step "Checking git status (main branch: $BUILD_ROOT)"
+  cd "$BUILD_ROOT"
   STATUS=$(git status --porcelain)
   if [ -z "$STATUS" ]; then
     ok "Working tree clean — nothing to commit"
@@ -73,8 +65,8 @@ if [ "$SKIP_PUSH" = false ]; then
 fi
 
 # ── 2. Web build ──────────────────────────────────────────────────────────────
-step "Building web app (npm run build)"
-cd "$PROJECT_ROOT"
+step "Building web app from main branch ($BUILD_ROOT)"
+cd "$BUILD_ROOT"
 npm run build 2>&1 | tee "$LOG_DIR/build.log"
 ok "Web build complete"
 
@@ -85,7 +77,7 @@ ok "Capacitor sync complete"
 
 # ── 4. Assemble debug APK ─────────────────────────────────────────────────────
 step "Building debug APK (Gradle)"
-cd "$PROJECT_ROOT/android"
+cd "$BUILD_ROOT/android"
 ./gradlew assembleDebug 2>&1 | tee -a "$LOG_DIR/build.log"
 
 if [ ! -f "$APK_OUTPUT" ]; then
@@ -97,9 +89,9 @@ ok "Debug APK built — $APK_SIZE  →  $APK_OUTPUT"
 # ── 5. Google Drive upload ────────────────────────────────────────────────────
 if [ "$SKIP_UPLOAD" = false ]; then
   step "Uploading APK to Google Drive 'App Testing'"
-  GDRIVE_SCRIPT="$PROJECT_ROOT/scripts/gdrive_upload.py"
-  CREDS="$PROJECT_ROOT/scripts/credentials.json"
-  TOKEN="$PROJECT_ROOT/scripts/.gdrive_token.json"
+  GDRIVE_SCRIPT="$BUILD_ROOT/scripts/gdrive_upload.py"
+  CREDS="$BUILD_ROOT/scripts/credentials.json"
+  TOKEN="$BUILD_ROOT/scripts/.gdrive_token.json"
 
   if [ ! -f "$CREDS" ] && [ ! -f "$TOKEN" ]; then
     warn "Google Drive credentials not set up."
@@ -135,7 +127,7 @@ echo ""
 adb logcat -c
 
 # Run monitor in background, writing to file + stdout
-bash "$PROJECT_ROOT/scripts/adb-monitor.sh" "$PACKAGE" "$LOG_DIR/adb.log" "$BUGS_FILE" &
+bash "$BUILD_ROOT/scripts/adb-monitor.sh" "$PACKAGE" "$LOG_DIR/adb.log" "$BUGS_FILE" &
 MONITOR_PID=$!
 echo "  ADB monitor PID: $MONITOR_PID (kill with: kill $MONITOR_PID)"
 
